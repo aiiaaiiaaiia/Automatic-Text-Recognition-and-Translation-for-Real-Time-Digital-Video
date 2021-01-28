@@ -36,6 +36,7 @@ print('[INFO] FPS : ' + str(fps))
 
 print('[STATUS] READY FOR DETECT')
 prev_bounds = []
+i = 1  # frame number 
 
 while(True):
     ret, frame = cap.read()     # current frame is frame
@@ -61,11 +62,13 @@ while(True):
         bounds.append([int(x_min), int(x_max), int(y_min), int(y_max), center])
       #---------Detection End--------
     
-    print('\n[INFO] Current frame :')
-    cv2.imshow('frame', frame)
-    cv2.waitKey(0)
+    print('\n[INFO] Current frame : ' + str(i))
+    cv2.imwrite("./develop/testimage//" + str(i) + '_cframe.png' ,frame)
+    # cv2.imshow('frame', frame)
+    # cv2.waitKey(0)
 
     print('[INFO] Previous bounds ' + str(prev_bounds))
+    print('[INFO] Current bounds ' + str(bounds))
     if bounds == []:                # current frame have no text to check similarity and do recognition so move to the next frame
         print('[INFO] This current frame have no text')
         prev_bounds = bounds
@@ -75,32 +78,38 @@ while(True):
         else:
             break
     elif prev_bounds != []:
+        c = 1  #number of ROI
         for c_b in bounds:
             similar = False
             for p_b in prev_bounds:
                 dist = math.dist(c_b[4], p_b[4]) 
-                print('[INFO] distance is {}'.format(dist))
-                if dist <= 1.0:      # similar position by fine tune
+                # print('[INFO] distance is {}'.format(dist))
+                if dist <= 6.0:      # similar position by fine tune
                     similar = True
                     print('[INFO] Have similar position ROI, Next step is check differ')
-                    print('[INFO] Center are {} and {}'.format(c_b[4], p_b[4]))
-                    print('[INFO] distance is {}'.format(dist))
-                    print('[INFO] Current ROI')
+                    # print('[INFO] Center are {} and {}'.format(c_b[4], p_b[4]))
+                    # print('[INFO] distance is {}'.format(dist))
+                    # print('[INFO] Current ROI')
                     roi = frame[ c_b[2]:c_b[3], c_b[0]:c_b[1] ]
-                    cv2.imshow('roi', roi)
-                    cv2.waitKey(0)
+                    # cv2.imshow('roi', roi)
+                    # cv2.waitKey(0)
+                    cv2.imwrite("./develop/testimage//" + str(i) + '_s_cframe_' + str(c) +'.png' ,roi)
                     
-                    print('[INFO] Previous ROI')
-                    p_roi = prev_frame[ p_b[2]:p_b[3], p_b[0]:p_b[1] ]
-                    cv2.imshow('p_roi', p_roi)
-                    cv2.waitKey(0)
+                    # print('[INFO] Previous ROI')
+                    # p_roi = prev_frame[ p_b[2]:p_b[3], p_b[0]:p_b[1] ]
+                    # cv2.imshow('p_roi', p_roi)
+                    # cv2.waitKey(0)
                     # if diff == 'no dif' then b will append False, which mean skip the recognition.  if it similar then append True
+                
             if similar == False:
                 print("[INFO] Haven't similar with previous, Next step is Recognition")
-                print('[INFO] Current ROI')
+                # print('[INFO] Current ROI')
                 c_roi = frame[ c_b[2]:c_b[3], c_b[0]:c_b[1] ]
-                cv2.imshow('c_roi', c_roi)
-                cv2.waitKey(0)
+                cv2.imwrite("./develop/testimage//" + str(i) + '_ns_cframe_'+str(c)+'.png',c_roi)
+                # cv2.imshow('c_roi', c_roi)
+                # cv2.waitKey(0)
+            c+=1
+
                     
     # else:     
     # # prev_bounds = [] so this current frame will do recognition the whole frame
@@ -110,7 +119,7 @@ while(True):
     #----------Check Similarity End---------
 
     #----------Start Recog---------
-    print('[STATUS] Recognition')
+    # print('[STATUS] Recognition')
     # use def
     #----------Recog End---------
     
@@ -121,7 +130,7 @@ while(True):
     if(q != 'y'):
         break
     # out.write(frame)
-    
+    i+=1
 # out.release()
 cap.release()
 cv2.destroyAllWindows()

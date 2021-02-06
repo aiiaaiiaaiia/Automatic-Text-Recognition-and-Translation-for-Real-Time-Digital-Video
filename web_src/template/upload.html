@@ -3,18 +3,19 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
     <!-- <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous"> -->
     <link rel="stylesheet" href="static.css">
+
 </head>
 <body>
     <div class="card" style="background-color: white; padding: 1.25rem; border: 0px solid rgb(0 0 0 / 0); ">
         <div class="card-body">
-            <div class="jumbotron" style="background-color: #b8edfd; padding: 34px; height: 60rem; border-radius: 3rem;">
+            <div class="jumbotron" style="background-color: #b8edfd; padding: 34px; height: auto; border-radius: 3rem;">
                 <h1 class="display-4">Automatic Text Recognition and Translation </br>for Real-time Digital Video </h1>
-                <p class="lead">This project will help you more understand and enjoy your video!</p>
+                <p class="lead">This project will help you understand and enjoy your video better!</p>
                 <hr class="my-4" style="padding-bottom: 0.8rem; padding-top: 0.5rem;">
                
                 <!-- <div class="container" style="margin: 0px; padding: 0px;"> -->
                 <div className="row" > 
-                   
+
                     <div class="col-sm-6 float-left" style="margin: 0px; padding: 0px;"> 
                         <div class="card" style="width: 20rem; margin-bottom: 2rem; margin-left: 8rem; background-color: honeydew; border-radius: 20px;" >
                             <div class="card-body" style="padding: 2%; ">
@@ -192,10 +193,27 @@
                             </div>
                         </div>
                     </div>
-
                 </div>
                 <!-- </div> -->
+
+                <div class="container" style="margin: 0px; padding: 0px;">
+                <div className="row" > 
+                    <div class="col-sm float-left" style="margin: 0px; padding: 0px;"></div>
+                    <video width="900" height="500" controls style="padding-top: 2.5rem;">
+                        <source src={{ url_for('static', filename="uploadedvideo/"+"Disney.mp4") }} type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                    </div>
+
+                    <div class="col-sm float-right" style="margin: 0px; padding: 0px;"></div>
+                        <form action="/echo" method="POST"><value="Echo"></form>
+                    </div>
+                </div>
+                </div>
+        
+
             </div>
+
         </div>
     </div>            
 

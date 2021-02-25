@@ -1,57 +1,8 @@
-import easyocr
-import PIL
-from PIL import ImageFont, ImageDraw, Image
-import numpy as np
-import cv2
-import argparse
-from google_trans_new import google_translator  
-translator = google_translator()  
-# from translate import Translator
-import ctypes
-ctypes.cdll.LoadLibrary('caffe2_nvrtc.dll')
+from import_python_library import *
+from def_init import *
+from def_frame_similarity import *
 
-##------INIT------##
-def lang(language):
-  if language == 'detect':
-     code_lang = 'all'
-     reader = easyocr.Reader(['en']) 
-  elif language == 'english':
-    code_lang = 'en'
-    reader = easyocr.Reader(['en'])
-  elif language == 'chinese':
-    code_lang = 'zh-cn'
-    reader = easyocr.Reader(['ch_sim', 'en'])
-  elif language == 'french':
-    code_lang = 'fr'
-    reader = easyocr.Reader(['fr', 'en'])
-  elif language == 'thai':
-    code_lang = 'th'
-    reader = easyocr.Reader(['th', 'en'])
-  elif language == 'italian':
-    code_lang = easyocr.Reader(['it', 'en'])
-    reader = reader_it
-  elif language == 'japanese':
-    code_lang = 'ja'
-    reader = easyocr.Reader(['ja', 'en'])
-  elif language == 'korean':  
-    code_lang = 'ko'
-    reader = easyocr.Reader(['ko', 'en'])
-  elif language == 'german':
-    code_lang = 'de'
-    reader = easyocr.Reader(['de', 'en'])
-  else:  #spanish
-    code_lang = 'es'
-    reader = easyocr.Reader(['es', 'en'])
-  return code_lang, reader
-
-def translang(translanguage):
-  if translanguage == 'thai':
-    code_translang = 'th'
-  else: 
-    code_translang = 'en'
-  return code_translang
-
-##------INIT------##
+##------ INIT ------##
 ap = argparse.ArgumentParser()
 ap.add_argument("-v", "--video", type=str,
 	help="path to input video")
@@ -63,14 +14,14 @@ ap.add_argument("-t", "--translanguage", type=str,
 	help="the translate language")
 args = vars(ap.parse_args())
 
-videopath = args["video"]       # 'NBC Nightly News.mp4'
-overlay = args["position"]      # 'above'
-code_color = (0,0,255)          # red
-s = 30                          # font_size 
-language = args["language"]     # 'english'
+videopath = args["video"]    
+overlay = args["position"]      # above, below, text position
+code_color = (0,0,255)          # default color : red
+s = 30                          # default font size 
+language = args["language"]     # video language
 translanguage = args["translanguage"]     
 font = ImageFont.truetype('angsau_0.ttf', s)
-para = True
+# para = False                  # default is False
 code_lang, reader = lang(language)
 code_translang = translang(translanguage)
 
@@ -89,105 +40,154 @@ print('[INFO] VIDEO NAME : ' + name)
 print('[INFO] FPS : ' + str(fps))
 out = cv2.VideoWriter('new_'+name+'.avi', cv2.VideoWriter_fourcc(*'MJPG'), fps, (width,height))
 vocab = []
+prev_bounds = []
+frist = True
+prev_frame = 0
+n_m = 100
+print = True
 
 print('[INFO] READY FOR DETECT AND RECOGNIZE \n')
 print('[INFO] THE LIST OF FOUND SENTENSES :')
-# same = 'y'
-prev_bounds = []
 
 while(cap.isOpened()):
+  ret, frame = cap.read() 
   if ret == False:
     print('[INFO] End Of Video...')
     break
 
-  #------ detect --------
-  bounds = []
-  horizontal_list, free_list = reader.detect(frame)
-  for bound in free_list:
-    x_min, y_min = bound[0]
-    x_max, y_max = bound[2]
-    bounds.append([int(x_min), int(x_max), int(y_min), int(y_max)])
+  #----- frame similarity ------
+  if(not frist):
+    n_m = compare_images(frame, prev_frame)
+  # if Manhattan norm(n_m) < 100 go to overlay process 
+  # if Manhattan norm(n_m) >= 100 go to detect process 
 
-  for bound in horizontal_list:
-    x_min = box[0]
-    x_max = box[1]
-    y_min = box[2]
-    y_max = box[3]
-    bounds.append([int(x_min), int(x_max), int(y_min), int(y_max)])
+  if(n_m >= 100):
+    #------ detect --------
+    bounds = []
+    horizontal_list, free_list = reader.detect(frame)
+    for box in horizontal_list:
+      x_min = box[0]
+      x_max = box[1]
+      y_min = box[2]
+      y_max = box[3]
+      center = ( (x_min+x_max)/2, (y_min+y_max)/2 )
+      bounds.append([int(x_min), int(x_max), int(y_min), int(y_max), center, 'vtext', False, '', 0, 0, 'code_lang'])
 
-  for b in bound:
-    if b in prev_bounds:
-      #------ tracking ------- 
-      roi = frame[int(y_min) : int(y_max), int(x_min) : int(x_max)]
-    
+    if bounds == []:   
+      prev_bounds = bounds
+      pass
 
-  prev_bounds = bounds
+    #----- text center similarity ------
+    # similarity = []
+    if(prev_bounds != []):
+      for index in range(len(bounds)):
+        c_b = bounds[index]
+        # similar = False
+        for i in range(len(prev_bounds)):
+          p_b = prev_bounds[i]
+          dist = math.dist(c_b[4], p_b[4])      # distance
+          if dist <= 6.0:                       # similar position by fine tune
+            #----- similarity ROI -----
+            c_roi = frame[ c_b[2]:c_b[3], c_b[0]:c_b[1] ]
+            p_roi = prev_frame[ p_b[2]:p_b[3], p_b[0]:p_b[1] ]
+            n_m_roi = compare_images(c_roi, p_roi)
+            if(n_m_roi < 100):
+              # similar = True
+              bounds[index][5] = i
+              bounds[index][6] = p_b[6] #vtext
+              bounds[index][7] = p_b[7] #tran_text
+              bounds[index][8] = p_b[8] #text_width
+              bounds[index][9] = p_b[9] #text_height
+              bounds[index][10] = p_b[10] #code_lang
+            # else:
+            #   bounds[index][5] = -1
+          # else:
+          #   bounds[index][5] = -1
+        # similarity.append(similar)       
+    # else:  # do the recognition process
+      # for i in range(len(bounds)):
+        # similarity.append(False)
+        # bounds[i][5] = -1
 
-  ######################################################### previous_frame = frame.copy()
-  ######################################################### ret, frame = cap.read()
-  
+    # 1 array
+    # bounds = 0x_min, 1x_max, 2y_min, 3y_max, 4center, 
+    # 5# of similar prev frame or false, 6vtext, 7trantext(from prev or recognition), 
+    # 8text_width, 9text_height, 10code_lang
 
- #------- recognition -----
-  # if():
-    bounds = reader.readtext(frame, paragraph=para)
+    # # of similar prev frame if False mean did the recognize
+
+    #------- recognition -----
     sentrans = []
-    for bound in bounds:
-      text = bound[1] 
-      # prob = bound[2]
-      if(text == ''):  #or (len(text) <= 7 and prob < 0.15)
-        continue
-      text = text.lower()
-      startX, startY = bound[0][0]
-      endX, endY = bound[0][2]
+    for i in range(len(bounds)):
+      c_b = bounds[i]
+      if(c_b[5] == False):   # similarity = False, so need to recognize and translate
+        # need to display because we found the new word.
+        # if(lang == 'mult'): # use tesseract  and get src lang too for print
+        print = True
+        c_roi = frame[ c_b[2]:c_b[3], c_b[0]:c_b[1] ]
+        c_rec = reader.recognize(c_roi)
+        text = c_rec[1] 
+        if(text == ''):  
+            continue
+        text = text.lower()
+        trans = translator.translate(text, lang_src=code_lang, lang_tgt=code_translang)
+        text_width, text_height = font.getsize(trans)
+        bounds[i][6] = text
+        bounds[i][7] = trans
+        bounds[i][8] = text_width
+        bounds[i][9] = text_height
+        bounds[i][10] = code_lang
+        
+    if(print):
+      print = False
+      #   totalsec = int(i//fps)
+      #   min = str(totalsec//60)  calculate again
+      #   sec = str(totalsec%60)
+      file = open("text.txt", "a")
+      L = ["Current video time is ", hour, ':', min, ':', sec, "\n"]
+      file.writelines(L)
+      for i in range(len(bounds)):
+        # L = [ bounds[i][6], " {", code_lang, "} : ", bounds[i][7] ] 
+        # file.writelines(L) 
+        file.close()
+        
+    prev_frame = frame.copy()
+    frist = False
 
-      trans = translator.translate(text, lang_src=code_lang, lang_tgt=code_translang)
-      if (text not in vocab):
-        # if same =='y':
-        #   vocab = []
-        #   totalsec = int(i//fps)
-        #   min = str(totalsec//60)
-        #   sec = str(totalsec%60)
-        #   print('[INFO] VIDEO TIME : ' + min+'.'+sec)
-        print("Original Text : {}  ({})  =  {}".format(text, code_lang , trans))
-        vocab.append(text)
-      #   same = 'n'
-      # else:
-      #   same = 'y'
-      text_width, text_height = font.getsize(trans)
-      sentrans.append([text, code_lang, trans, startX, startY, endX, endY, text_width, text_height])
-
-  #------ overlay ------
-  for item in sentrans:
-    text, code_lang, trans, startX, startY, endX, endY, text_width, text_height = item[:]
-    #transparent
-    if overlay == 'above':
-      X=startX; Y = startY - 5; Xwidth = startX+text_width; Yheight = startY-text_height; a = 0.7 
-      blk = np.zeros(frame.shape, np.uint8)
-    elif overlay == 'under':
-      X = startX; Y = endY+text_height; Xwidth = X+text_width; Yheight = Y-text_height; a = 0.7
-      blk = np.zeros(frame.shape, np.uint8)
-    else:
-      X = startX ;Y = startY; Xwidth = endX; Yheight = endY; a = 1
-      blk = np.zeros(frame.shape, np.uint8)
+  # #------ overlay ------
+  # for item in sentrans:
+  #   text, code_lang, trans, startX, startY, endX, endY, text_width, text_height = item[:]
+  #   #transparent
+  #   if overlay == 'above':
+  #     X=startX; Y = startY - 5; Xwidth = startX+text_width; Yheight = startY-text_height; a = 0.7 
+  #     blk = np.zeros(frame.shape, np.uint8)
+  #   elif overlay == 'under':
+  #     X = startX; Y = endY+text_height; Xwidth = X+text_width; Yheight = Y-text_height; a = 0.7
+  #     blk = np.zeros(frame.shape, np.uint8)
+  #   else:
+  #     X = startX ;Y = startY; Xwidth = endX; Yheight = endY; a = 1
+  #     blk = np.zeros(frame.shape, np.uint8)
     
-    cv2.rectangle(blk, (int(X), int(Y)), (int(Xwidth), int(Yheight)), (255, 255, 255), cv2.FILLED)
-    frame = cv2.addWeighted(frame, 1, blk, a, gamma=0);
+  #   cv2.rectangle(blk, (int(X), int(Y)), (int(Xwidth), int(Yheight)), (255, 255, 255), cv2.FILLED)
+  #   frame = cv2.addWeighted(frame, 1, blk, a, gamma=0);
 
-    #rectangle
-    frame = cv2.rectangle(frame, (int(startX), int(startY)), (int(endX), int(endY)),code_color, 1)
+  #   #rectangle
+  #   frame = cv2.rectangle(frame, (int(startX), int(startY)), (int(endX), int(endY)),code_color, 1)
     
-    #text
-    img_pil = Image.fromarray(frame)
-    draw = ImageDraw.Draw(img_pil)
-    if overlay == 'above' or overlay == 'under':
-      Y = Y-text_height
-    else:
-      X = startX + (endX-startX)/2 - (text_width/2)
-      Y = Y+(text_height/2)
-    draw.text((X, Y), trans, font = font, fill = code_color)  # position, text, font, (b, g, r, a)
-    frame = np.array(img_pil)
-
-    out.write(frame)
+  #   #text
+  #   img_pil = Image.fromarray(frame)
+  #   draw = ImageDraw.Draw(img_pil)
+  #   if overlay == 'above' or overlay == 'under':
+  #     Y = Y-text_height
+  #   else:
+  #     X = startX + (endX-startX)/2 - (text_width/2)
+  #     Y = Y+(text_height/2)
+  #   draw.text((X, Y), trans, font = font, fill = code_color)  # position, text, font, (b, g, r, a)
+  #   frame = np.array(img_pil)
+  
+  prev_bounds = bounds  # after did overlay 
+  
+  out.write(frame)
     
      
 out.release()

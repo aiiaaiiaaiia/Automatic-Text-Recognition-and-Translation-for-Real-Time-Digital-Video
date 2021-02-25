@@ -1,38 +1,8 @@
 ## run command ##
 ## python file.py --video videofile.mp4 
 
-import easyocr
-import numpy as np
-import cv2
-import argparse
-import ctypes
-ctypes.cdll.LoadLibrary('caffe2_nvrtc.dll')
-import math 
-# from skimage.measure import compare_ssim
-# from skimage.metrics import structural_similarity
-# import imagehash
-import sys
-# from scipy.misc import imread
-from scipy.linalg import norm
-from scipy import average
-from matplotlib import pyplot as plt
-import math 
-
-def normalize(arr):
-    rng = arr.max()-arr.min()
-    amin = arr.min()
-    return (arr-amin)*255/rng
-
-def compare_images(img1, img2):
-    # normalize to compensate for exposure difference, this may be unnecessary
-    # consider disabling it
-    img1 = normalize(img1)
-    img2 = normalize(img2)
-    # calculate the difference and its norms
-    diff = img1 - img2  # elementwise for scipy arrays
-    m_norm = np.sum(abs(diff))  # Manhattan norm
-    z_norm = norm(diff.ravel(), 0)  # Zero norm
-    return (m_norm, z_norm)
+from import_python_library import *
+from def_frame_similarity import *
 
 ##------INIT------##
 ap = argparse.ArgumentParser()
@@ -66,7 +36,7 @@ while(True):
     if ret == False:
         print('[STATUS] End Of Video...')
         break
-    if(i >=85 ):       # for test
+    if(i >= 108 ):       # for test
         # print('[INFO] Current frame : ' + str(i))
         print('[INFO] Comparing frame : {} and {}'.format(i-1, i))
 
@@ -93,7 +63,7 @@ while(True):
         n_m, n_0 = compare_images(current_frame_gray_edge, prev_frame_gray_edge)
         print("Manhattan norm: " + str(n_m) + " / per pixel: " + str(n_m/pixel))
         print("Zero norm: "+ str(n_0)+ " / per pixel: " + str(n_0*1.0/pixel))
-
+        
         # cv2.imwrite("./develop/framepic2//" + str(i) + '_frame.png' ,frame)
         # cv2.imshow('frame', frame)
         # cv2.waitKey(0)
@@ -107,7 +77,7 @@ while(True):
         # if(q != 'y'):
         #     break
         # out.write(frame)
-    if (i == 125):  # for test
+    if (i == 113):  # for test
         break
 
     prev_frame = frame.copy()

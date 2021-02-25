@@ -44,12 +44,14 @@ prev_bounds = []
 frist = True
 prev_frame = 0
 n_m = 100
-print = True
+print_text = True
+number_frame = 1
 
 print('[INFO] READY FOR DETECT AND RECOGNIZE \n')
 print('[INFO] THE LIST OF FOUND SENTENSES :')
 
 while(cap.isOpened()):
+  print('number_frame ', number_frame)
   ret, frame = cap.read() 
   if ret == False:
     print('[INFO] End Of Video...')
@@ -71,7 +73,7 @@ while(cap.isOpened()):
       y_min = box[2]
       y_max = box[3]
       center = ( (x_min+x_max)/2, (y_min+y_max)/2 )
-      bounds.append([int(x_min), int(x_max), int(y_min), int(y_max), center, 'vtext', False, '', 0, 0, 'code_lang'])
+      bounds.append([int(x_min), int(x_max), int(y_min), int(y_max), center, False, 'vtext',  'trantext', 0, 0, 'code_lang'])
 
     if bounds == []:   
       prev_bounds = bounds
@@ -88,10 +90,10 @@ while(cap.isOpened()):
           dist = math.dist(c_b[4], p_b[4])      # distance
           if dist <= 6.0:                       # similar position by fine tune
             #----- similarity ROI -----
-            c_roi = frame[ c_b[2]:c_b[3], c_b[0]:c_b[1] ]
-            p_roi = prev_frame[ p_b[2]:p_b[3], p_b[0]:p_b[1] ]
-            n_m_roi = compare_images(c_roi, p_roi)
-            if(n_m_roi < 100):
+            # c_roi = frame[ c_b[2]:c_b[3], c_b[0]:c_b[1] ]
+            # p_roi = prev_frame[ c_b[2]:c_b[3], c_b[0]:c_b[1] ]
+            # n_m_roi = compare_images(c_roi, p_roi)
+            # if(n_m_roi < 100):
               # similar = True
               bounds[index][5] = i
               bounds[index][6] = p_b[6] #vtext
@@ -111,45 +113,50 @@ while(cap.isOpened()):
 
     # 1 array
     # bounds = 0x_min, 1x_max, 2y_min, 3y_max, 4center, 
-    # 5# of similar prev frame or false, 6vtext, 7trantext(from prev or recognition), 
+    # 5 # of similar prev frame or false, 6vtext, 7trantext(from prev or recognition), 
     # 8text_width, 9text_height, 10code_lang
 
     # # of similar prev frame if False mean did the recognize
 
     #------- recognition -----
-    sentrans = []
-    for i in range(len(bounds)):
-      c_b = bounds[i]
-      if(c_b[5] == False):   # similarity = False, so need to recognize and translate
+    for index in range(len(bounds)):
+      c_b = bounds[index]
+      if(c_b[5] == False or frist == True):   # similarity = False, so need to recognize and translate
         # need to display because we found the new word.
         # if(lang == 'mult'): # use tesseract  and get src lang too for print
-        print = True
-        c_roi = frame[ c_b[2]:c_b[3], c_b[0]:c_b[1] ]
+        print_text = True
+        c_roi = frame[ bounds[index][2]:bounds[index][3], bounds[index][0]:bounds[index][1] ]
         c_rec = reader.recognize(c_roi)
-        text = c_rec[1] 
+        text = c_rec[0][1] 
+        # print(text)
         if(text == ''):  
             continue
         text = text.lower()
         trans = translator.translate(text, lang_src=code_lang, lang_tgt=code_translang)
         text_width, text_height = font.getsize(trans)
-        bounds[i][6] = text
-        bounds[i][7] = trans
-        bounds[i][8] = text_width
-        bounds[i][9] = text_height
-        bounds[i][10] = code_lang
+        print('bounds[index][6] ', bounds[index][6])
+        bounds[index][6] = text
+        bounds[index][7] = trans
+        bounds[index][8] = text_width
+        bounds[index][9] = text_height
+        bounds[index][10] = code_lang
         
-    if(print):
-      print = False
+    if(print_text):
+      print_text = False
       #   totalsec = int(i//fps)
       #   min = str(totalsec//60)  calculate again
       #   sec = str(totalsec%60)
-      file = open("text.txt", "a")
-      L = ["Current video time is ", hour, ':', min, ':', sec, "\n"]
-      file.writelines(L)
+      
+      # file = open("text.txt", "a")
+      # L = ["Current video time is ", hour, ':', min, ':', sec, "\n"]
+      # file.writelines(L)
       for i in range(len(bounds)):
-        # L = [ bounds[i][6], " {", code_lang, "} : ", bounds[i][7] ] 
+        if(bounds[i][6] == ''):  
+            continue
+        # L = [ str(bounds[i][6]), " {", code_lang, "} : ", str(bounds[i][7]), '\n' ] 
         # file.writelines(L) 
-        file.close()
+        print(bounds[i])
+      # file.close()
         
     prev_frame = frame.copy()
     frist = False
@@ -186,7 +193,7 @@ while(cap.isOpened()):
   #   frame = np.array(img_pil)
   
   prev_bounds = bounds  # after did overlay 
-  
+  number_frame += 1
   out.write(frame)
     
      

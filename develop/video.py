@@ -52,6 +52,7 @@ print('[INFO] THE LIST OF FOUND SENTENSES :')
 
 while(cap.isOpened()):
   print('number_frame ', number_frame)
+  bounds = []
   ret, frame = cap.read() 
   if ret == False:
     print('[INFO] End Of Video...')
@@ -65,7 +66,6 @@ while(cap.isOpened()):
 
   if(n_m >= 100):
     #------ detect --------
-    bounds = []
     horizontal_list, free_list = reader.detect(frame)
     for box in horizontal_list:
       x_min = box[0]
@@ -119,22 +119,18 @@ while(cap.isOpened()):
     # # of similar prev frame if False mean did the recognize
 
     #------- recognition -----
+    # # need to display because we found the new word.
+    # if(lang == 'mult'): # use tesseract  and get src lang too for print
     for index in range(len(bounds)):
       c_b = bounds[index]
-      if(c_b[5] == False or frist == True):   # similarity = False, so need to recognize and translate
-        # need to display because we found the new word.
-        # if(lang == 'mult'): # use tesseract  and get src lang too for print
+      if(str(c_b[5]) == 'False'):   # similarity = False, so need to recognize and translate
         print_text = True
-        c_roi = frame[ bounds[index][2]:bounds[index][3], bounds[index][0]:bounds[index][1] ]
+        c_roi = frame[ c_b[2]:c_b[3], c_b[0]:c_b[1] ]
         c_rec = reader.recognize(c_roi)
         text = c_rec[0][1] 
-        # print(text)
-        if(text == ''):  
-            continue
         text = text.lower()
         trans = translator.translate(text, lang_src=code_lang, lang_tgt=code_translang)
         text_width, text_height = font.getsize(trans)
-        print('bounds[index][6] ', bounds[index][6])
         bounds[index][6] = text
         bounds[index][7] = trans
         bounds[index][8] = text_width
@@ -159,44 +155,43 @@ while(cap.isOpened()):
       # file.close()
         
     prev_frame = frame.copy()
+    prev_bounds = bounds  
     frist = False
 
-  # #------ overlay ------
-  # for item in sentrans:
-  #   text, code_lang, trans, startX, startY, endX, endY, text_width, text_height = item[:]
-  #   #transparent
-  #   if overlay == 'above':
-  #     X=startX; Y = startY - 5; Xwidth = startX+text_width; Yheight = startY-text_height; a = 0.7 
-  #     blk = np.zeros(frame.shape, np.uint8)
-  #   elif overlay == 'under':
-  #     X = startX; Y = endY+text_height; Xwidth = X+text_width; Yheight = Y-text_height; a = 0.7
-  #     blk = np.zeros(frame.shape, np.uint8)
-  #   else:
-  #     X = startX ;Y = startY; Xwidth = endX; Yheight = endY; a = 1
-  #     blk = np.zeros(frame.shape, np.uint8)
+  #------ overlay ------
+  for b in bounds:
+    startX, endX, startY, endY, position, number_prev_frame, ori_text,  tran_text, text_width, text_height, code_lang = b[:]
+    #---- transparent
+    if overlay == 'above':
+      X=startX; Y = startY - 5; Xwidth = startX+text_width; Yheight = startY-text_height; a = 0.7 
+      blk = np.zeros(frame.shape, np.uint8)
+    elif overlay == 'under':
+      X = startX; Y = endY+text_height; Xwidth = X+text_width; Yheight = Y-text_height; a = 0.7
+      blk = np.zeros(frame.shape, np.uint8)
+    else:
+      X = startX ;Y = startY; Xwidth = endX; Yheight = endY; a = 1
+      blk = np.zeros(frame.shape, np.uint8)
     
-  #   cv2.rectangle(blk, (int(X), int(Y)), (int(Xwidth), int(Yheight)), (255, 255, 255), cv2.FILLED)
-  #   frame = cv2.addWeighted(frame, 1, blk, a, gamma=0);
+    cv2.rectangle(blk, (int(X), int(Y)), (int(Xwidth), int(Yheight)), (255, 255, 255), cv2.FILLED)
+    frame = cv2.addWeighted(frame, 1, blk, a, gamma=0);
 
-  #   #rectangle
-  #   frame = cv2.rectangle(frame, (int(startX), int(startY)), (int(endX), int(endY)),code_color, 1)
+    #---- rectangle
+    frame = cv2.rectangle(frame, (int(startX), int(startY)), (int(endX), int(endY)),code_color, 1)
     
-  #   #text
-  #   img_pil = Image.fromarray(frame)
-  #   draw = ImageDraw.Draw(img_pil)
-  #   if overlay == 'above' or overlay == 'under':
-  #     Y = Y-text_height
-  #   else:
-  #     X = startX + (endX-startX)/2 - (text_width/2)
-  #     Y = Y+(text_height/2)
-  #   draw.text((X, Y), trans, font = font, fill = code_color)  # position, text, font, (b, g, r, a)
-  #   frame = np.array(img_pil)
+    #---- text
+    img_pil = Image.fromarray(frame)
+    draw = ImageDraw.Draw(img_pil)
+    if overlay == 'above' or overlay == 'under':
+      Y = Y-text_height
+    else:
+      X = startX + (endX-startX)/2 - (text_width/2)
+      Y = Y+(text_height/2)
+    draw.text((X, Y), tran_text, font = font, fill = code_color)  # position, text, font, (b, g, r, a)
+    frame = np.array(img_pil)
   
-  prev_bounds = bounds  # after did overlay 
   number_frame += 1
   out.write(frame)
     
-     
 out.release()
 cap.release()
 cv2.destroyAllWindows()

@@ -17,3 +17,9 @@ def compare_images(frame, prev_frame):
     m_norm = np.sum(abs(diff))  # Manhattan norm
     # z_norm = norm(diff.ravel(), 0)  # Zero norm
     return (m_norm)
+
+def roi_simlarity(roi, prev_roi):
+    g_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+    g_prev_roi = cv2.cvtColor(prev_roi, cv2.COLOR_BGR2GRAY)
+
+    method = cv2.TM_SQDIFF_NORMED

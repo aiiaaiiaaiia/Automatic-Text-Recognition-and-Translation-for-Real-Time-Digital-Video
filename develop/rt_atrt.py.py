@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from import_python_library import *
+from import_lib import *
 from utils import *
 
 class RT_ATRT():

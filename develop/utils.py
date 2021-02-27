@@ -1,4 +1,4 @@
-from import_python_library import *
+from import_lib import *
 
 ############### LANGUAGE ################
 def lang(language):

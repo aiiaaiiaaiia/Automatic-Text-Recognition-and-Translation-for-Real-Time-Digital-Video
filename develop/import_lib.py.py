@@ -18,5 +18,7 @@ from matplotlib import pyplot as plt
 # from skimage.measure import compare_ssim
 # from skimage.metrics import structural_similarity
 # import imagehash
+import datetime
+
 
 # from scipy.misc import imread

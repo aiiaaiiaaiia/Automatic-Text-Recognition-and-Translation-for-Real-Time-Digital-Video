@@ -144,7 +144,6 @@ class RT_ATRT():
 	def overlay_similarity_roi(self, bounds, prev_bounds, frame, prev_frame):
 		for bound_idx in range(len(bounds)):
 			bound = bounds[bound_idx]
-
 			for prev_bound_idx in range(len(prev_bounds)):
 				prev_bound = prev_bounds[prev_bound_idx]
 				dist = math.dist(bound[4], prev_bound[4])      # distance
@@ -155,7 +154,7 @@ class RT_ATRT():
 
 					if(self.is_roi_similar(roi, prev_roi)):
 						## Overlay Similar_roi
-						bounds[index][5] = i
+						bounds[index][5] = prev_bound_idx
 						bounds[index][6] = prev_bound[6] #vtext
 						bounds[index][7] = prev_bound[7] #tran_text
 						bounds[index][8] = prev_bound[8] #text_width

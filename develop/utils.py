@@ -18,8 +18,8 @@ def lang(language):
     code_lang = 'th'
     reader = easyocr.Reader(['th', 'en'])
   elif language == 'italian':
-    code_lang = easyocr.Reader(['it', 'en'])
-    reader = reader_it
+    code_lang = 'it'
+    reader = easyocr.Reader(['it', 'en'])
   elif language == 'japanese':
     code_lang = 'ja'
     reader = easyocr.Reader(['ja', 'en'])

@@ -24,7 +24,7 @@ class RT_ATRT():
 		############ Parameter #############
 		self.videopath = args["video"]
 		self.overlay = args["position"]      # above, below, text position
-		self.frame_similarity_threshold = 20
+		self.frame_similarity_threshold = 30
 		self.roi_similarity_threshold = 0.5
 		self.roi_distance_threshold = 6.0
 		self.multi_input_language = language
@@ -70,7 +70,7 @@ class RT_ATRT():
 		prev_bounds = []
 		is_first_frame = True
 		prev_frame = 0
-		n_m = 20
+		n_m = 30
 		print_text = True
 		frame_idx = 1
 
@@ -159,7 +159,7 @@ class RT_ATRT():
 		bounds = []
     	#------ detect --------
 		horizontal_list, free_list = self.reader.detect(frame)
-		print('free_list\n', free_list)
+		# print('free_list\n', free_list)
 		# for box in free_list:
 		# 	x_min = max(min(box[0][0],box[1][0],box[2][0],box[3][0],), 0)
 		# 	x_max = max(max(box[0][0],box[1][0],box[2][0],box[3][0],), 0)
@@ -200,6 +200,7 @@ class RT_ATRT():
 
     #------- recognition -----
 	def easy_ocr_recognition(self, bounds, frame):
+		delete_index = []
 		for index in range(len(bounds)):
 			c_b = bounds[index]
 			if(c_b[5] == -1):   # similarity = -1, so need to recognize and translate
@@ -210,7 +211,7 @@ class RT_ATRT():
 				c_rec = self.reader.recognize(c_roi_gray)
 				text = c_rec[0][1] 
 				if(text == ''):
-					del bounds[index]
+					delete_index.append(c_b)
 					continue
 				text = text.lower()
 				detect_result = translator.detect(text)
@@ -223,6 +224,8 @@ class RT_ATRT():
 				bounds[index][8] = text_width
 				bounds[index][9] = text_height
 				bounds[index][10] = detect_result
+		for delete in delete_index:
+			bounds.remove(delete)
 		return bounds
 
 	def write_new_text_to_txt(self, result, vdo_time_sec):

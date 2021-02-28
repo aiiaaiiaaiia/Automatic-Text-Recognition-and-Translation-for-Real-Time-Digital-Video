@@ -14,14 +14,18 @@ class RT_ATRT():
 		ap.add_argument("-t", "--translanguage", type=str,
 		help="the translate language")
 		args = vars(ap.parse_args())
-		s = 30                          # default font size 
+		s = 20                          # default font size 
 		language = args["language"]     # video language
 		translanguage = args["translanguage"]
+		file = open("text.txt","r+")
+		file.truncate(0)
+		file.close()
 
 		############ Parameter #############
 		self.videopath = args["video"]
 		self.overlay = args["position"]      # above, below, text position
-		self.frame_similarity_threshold = 100
+		self.frame_similarity_threshold = 20
+		self.roi_similarity_threshold = 0.5
 		self.roi_distance_threshold = 6.0
 		self.multi_input_language = language
 		self.font = ImageFont.truetype('angsau_0.ttf', s)
@@ -30,7 +34,7 @@ class RT_ATRT():
 		self.code_translang = translang(translanguage)
 		self.code_color = (0,0,255)          # default color : red
 
-
+		self.extract_video_audio(self.videopath)
 		self.cap = cv2.VideoCapture(self.videopath)
 		self.vdo_name = self.videopath.split('.')[0]
 		# try:
@@ -39,19 +43,34 @@ class RT_ATRT():
 		self.output_vdo_writer = self.create_vdo_output_writer()
 		
 		self.process_vdo()
+		self.add_video_audio(self.vdo_name)
 		# except Exception as e: print(e)
+
+	def extract_video_audio(self, path):
+		clip = VideoFileClip(path)
+		clip.audio.write_audiofile("audio.mp3")
+		return True
+
+	def add_video_audio(self, name):
+		newclip = VideoFileClip('new_' + name + '.mp4')
+		newaudio = AudioFileClip('audio.mp3')
+		final = newclip.set_audio(newaudio)
+		final.write_videofile('processed_' + name + '.mp4')
+		return True
 
 	def create_vdo_output_writer(self):
 		height = int(self.cap.get(4))
 		width = int(self.cap.get(3))
-		vdo_writer = cv2.VideoWriter('new_'+self.vdo_name+'.avi', cv2.VideoWriter_fourcc(*'MJPG'), self.fps, (width,height))
+		vdo_writer = cv2.VideoWriter('new_'+self.vdo_name+'.mp4', 0x7634706d, self.fps, (width,height))
+		# cv2.VideoWriter_fourcc(*'MP4V')  mp4
+		# cv2.cv.CV_FOURCC(*'XVID')  avi
 		return vdo_writer
 
 	def process_vdo(self):
 		prev_bounds = []
 		is_first_frame = True
 		prev_frame = 0
-		n_m = 100
+		n_m = 20
 		print_text = True
 		frame_idx = 1
 
@@ -61,6 +80,7 @@ class RT_ATRT():
 			if ret == False:
 				print('[INFO] End Of Video...')
 				break
+			print(frame_idx)
 			
 			if is_first_frame:
 				bounds = self.text_detection(frame)
@@ -73,7 +93,7 @@ class RT_ATRT():
 			else:
 				if(self.is_frame_similar(prev_frame, frame)):
 					## Go for Overlay
-					self.overlay_text()
+					self.draw_result(frame, bounds)     # Just fixed
 				else:
 					## Go for Detect text
 					bounds = self.text_detection(frame)
@@ -94,10 +114,9 @@ class RT_ATRT():
 			prev_frame = frame
 			prev_bounds = bounds
 			frame_idx += 1
-			print(frame_idx)
 		
-		out.release()
-		cap.release()
+		self.output_vdo_writer.release()
+		# cap.release()
 		cv2.destroyAllWindows()
 		print('[INFO] Thank you')
 	
@@ -118,25 +137,43 @@ class RT_ATRT():
 		# if Manhattan norm(n_m) < frame_similarity_threshold go to overlay process 
 		# if Manhattan norm(n_m) >= frame_similarity_threshold go to detect process 
 		n_m = compare_images(frame, prev_frame)
-		print(n_m)
+		print('compare_images ', n_m)
+		# print(n_m)
 		if n_m >= self.frame_similarity_threshold:
 			return False
 		else:
-			print("frame is similar")
 			return True
+
 	
 	def is_roi_similar(self, roi, prev_roi):
-		return False
+		#BOBO bobo
+		n_m = compare_images(roi, prev_roi)
+		if n_m >= self.roi_similarity_threshold:
+			print("roi is umsimilar ", n_m)
+			return False
+		else:
+			print("roi is similar ", n_m)
+			return True
 
 	def text_detection(self, frame):
 		bounds = []
     	#------ detect --------
 		horizontal_list, free_list = self.reader.detect(frame)
+		print('free_list\n', free_list)
+		# for box in free_list:
+		# 	x_min = max(min(box[0][0],box[1][0],box[2][0],box[3][0],), 0)
+		# 	x_max = max(max(box[0][0],box[1][0],box[2][0],box[3][0],), 0)
+		# 	y_min = max(min(box[0][1],box[1][1],box[2][1],box[3][1],), 0)
+		# 	y_max = max(max(box[0][1],box[1][1],box[2][1],box[3][1],), 0)
+		# 	center = ( (x_min+x_max)/2, (y_min+y_max)/2 )
+		# 	x = [int(x_min), int(x_max), int(y_min), int(y_max), center, -1, 'vtext',  'trantext', 0, 0, 'code_lang'])
+		# 	print(x)
+			# bounds.append([int(x_min), int(x_max), int(y_min), int(y_max), center, -1, 'vtext',  'trantext', 0, 0, 'code_lang'])
 		for box in horizontal_list:
-			x_min = box[0]
-			x_max = box[1]
-			y_min = box[2]
-			y_max = box[3]
+			x_min = max(box[0], 0)
+			x_max = max(box[1], 0)
+			y_min = max(box[2], 0)
+			y_max = max(box[3], 0)
 			center = ( (x_min+x_max)/2, (y_min+y_max)/2 )
 			bounds.append([int(x_min), int(x_max), int(y_min), int(y_max), center, -1, 'vtext',  'trantext', 0, 0, 'code_lang'])
 		return bounds
@@ -149,17 +186,16 @@ class RT_ATRT():
 				dist = math.dist(bound[4], prev_bound[4])      # distance
 
 				if dist <= self.roi_distance_threshold:                       # similar position by fine tune
-					roi = frame[ bound[2]:bound[3], bound[0]:bound[1] ]
-					prev_roi = prev_frame[ prev_bound[2]:prev_bound[3], prev_bound[0]:prev_bound[1] ]
-
+					roi = frame[ min(bound[2], prev_bound[2]):max(bound[3], prev_bound[3]), min(bound[0], prev_bound[0]):max(bound[1], prev_bound[1]) ]
+					prev_roi = prev_frame[ min(bound[2], prev_bound[2]):max(bound[3], prev_bound[3]), min(bound[0], prev_bound[0]):max(bound[1], prev_bound[1]) ]
 					if(self.is_roi_similar(roi, prev_roi)):
 						## Overlay Similar_roi
-						bounds[index][5] = prev_bound_idx
-						bounds[index][6] = prev_bound[6] #vtext
-						bounds[index][7] = prev_bound[7] #tran_text
-						bounds[index][8] = prev_bound[8] #text_width
-						bounds[index][9] = prev_bound[9] #text_height
-						bounds[index][10] = prev_bound[10] #code_lang
+						bounds[bound_idx][5] = prev_bound_idx
+						bounds[bound_idx][6] = prev_bound[6] #vtext
+						bounds[bound_idx][7] = prev_bound[7] #tran_text
+						bounds[bound_idx][8] = prev_bound[8] #text_width
+						bounds[bound_idx][9] = prev_bound[9] #text_height
+						bounds[bound_idx][10] = prev_bound[10] #code_lang
 		return bounds
 
     #------- recognition -----
@@ -169,33 +205,41 @@ class RT_ATRT():
 			if(c_b[5] == -1):   # similarity = -1, so need to recognize and translate
 				print_text = True
 				c_roi = frame[ c_b[2]:c_b[3], c_b[0]:c_b[1] ]
-				c_rec = self.reader.recognize(c_roi)
+				# print('{} {} {} {}'.format(c_b[2],c_b[3], c_b[0],c_b[1]))
+				c_roi_gray = cv2.cvtColor(c_roi, cv2.COLOR_BGR2GRAY)
+				c_rec = self.reader.recognize(c_roi_gray)
 				text = c_rec[0][1] 
+				if(text == ''):
+					del bounds[index]
+					continue
 				text = text.lower()
+				detect_result = translator.detect(text)
+				if detect_result[0] not in [self.code_lang]:
+					detect_result = 'en'
 				trans = translator.translate(text, lang_src=self.code_lang, lang_tgt=self.code_translang)
 				text_width, text_height = self.font.getsize(trans)
 				bounds[index][6] = text
 				bounds[index][7] = trans
 				bounds[index][8] = text_width
 				bounds[index][9] = text_height
-				bounds[index][10] = self.code_lang
+				bounds[index][10] = detect_result
 		return bounds
 
 	def write_new_text_to_txt(self, result, vdo_time_sec):
 		conversion = datetime.timedelta(seconds=vdo_time_sec)
 		converted_time = str(conversion)
-		print(converted_time)
-		file = open("text.txt", "a")
-		L = ["Current video time is ", converted_time, "\n"]
+		
+		file = open("text.txt", "a", encoding="utf-8")
+		L = ["\nCurrent video time is ", converted_time, "\n"]
 		file.writelines(L)
 		for i in range(len(result)):
-			if(result[i][6] == ''):
-				continue
-			L = (result[i][6] + " {" + str(self.code_lang) + "} : " + result[i][7] + '\n').encode("utf8") 
-			print(L)
+			if(result[i][5] == -1):
+				L = [ result[i][6] + " {" + str(self.code_lang) + "} : " + result[i][7] + "\n"]
+				file.writelines(L)
+				print(result[i][6])
 			## BOBO dont forget implement this dunction after tesseract added
-			file.writelines(str(L))
-			print(result[i])
+			# file.writelines(str(L))
+			# print(result[i])
 		file.close()
 		
 	

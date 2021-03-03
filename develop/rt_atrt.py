@@ -24,8 +24,8 @@ class RT_ATRT():
 		############ Parameter #############
 		self.videopath = args["video"]
 		self.overlay = args["position"]      # above, below, text position
-		self.frame_similarity_threshold = 30
-		self.roi_similarity_threshold = 0.5
+		self.frame_similarity_threshold = 20
+		self.roi_similarity_threshold = 0.1
 		self.roi_distance_threshold = 6.0
 		self.multi_input_language = language
 		self.font = ImageFont.truetype('angsau_0.ttf', s)
@@ -70,7 +70,7 @@ class RT_ATRT():
 		prev_bounds = []
 		is_first_frame = True
 		prev_frame = 0
-		n_m = 30
+		n_m = 20
 		print_text = True
 		frame_idx = 1
 
@@ -80,39 +80,43 @@ class RT_ATRT():
 			if ret == False:
 				print('[INFO] End Of Video...')
 				break
-			print(frame_idx)
-			
-			if is_first_frame:
-				bounds = self.text_detection(frame)
-				if bounds == []:
-					result = bounds
-				else:
-					result = self.recognition(bounds, frame)
-					self.write_new_text_to_txt(result, frame_idx * (1.0 / self.fps))
-				is_first_frame = False
+			## frame skip
+			if((frame_idx) % 5 != 0):
+				3 # go to overlays
+				result = prev_bounds
 			else:
-				if(self.is_frame_similar(prev_frame, frame)):
-					## Go for Overlay
-					self.draw_result(frame, bounds)     # Just fixed
-				else:
-					## Go for Detect text
+				print(frame_idx)
+				if is_first_frame:
 					bounds = self.text_detection(frame)
 					if bounds == []:
 						result = bounds
 					else:
-						## Overlay_similarity_roi
-						bounds = self.overlay_similarity_roi(bounds, prev_bounds, frame, prev_frame)
 						result = self.recognition(bounds, frame)
 						self.write_new_text_to_txt(result, frame_idx * (1.0 / self.fps))
-						
-						
+					is_first_frame = False
+				else:
+					if(self.is_frame_similar(prev_frame, frame)):
+						## Go for Overlay
+						# self.draw_result(frame, bounds)     # Just fixed
+						result = bounds
+					else:
+						## Go for Detect text
+						bounds = self.text_detection(frame)
+						if bounds == []:
+							result = bounds
+						else:
+							## Overlay_similarity_roi
+							bounds = self.overlay_similarity_roi(bounds, prev_bounds, frame, prev_frame)
+							result = self.recognition(bounds, frame)
+							self.write_new_text_to_txt(result, frame_idx * (1.0 / self.fps))
+							
 			output_frame = self.draw_result(frame, result)
 			self.output_vdo_writer.write(output_frame)
 
 			### BOBO Sent progess to flask
 				
 			prev_frame = frame
-			prev_bounds = bounds
+			prev_bounds = result
 			frame_idx += 1
 		
 		self.output_vdo_writer.release()
@@ -214,16 +218,17 @@ class RT_ATRT():
 					delete_index.append(c_b)
 					continue
 				text = text.lower()
-				detect_result = translator.detect(text)
-				if detect_result[0] not in [self.code_lang]:
-					detect_result = 'en'
+				# detect_result = translator.detect(text)
+				# if detect_result[0] not in [self.code_lang]:
+				# 	detect_result = 'en'
 				trans = translator.translate(text, lang_src=self.code_lang, lang_tgt=self.code_translang)
 				text_width, text_height = self.font.getsize(trans)
 				bounds[index][6] = text
 				bounds[index][7] = trans
 				bounds[index][8] = text_width
 				bounds[index][9] = text_height
-				bounds[index][10] = detect_result
+				bounds[index][10] = self.code_lang
+				# bounds[index][10] = detect_result
 		for delete in delete_index:
 			bounds.remove(delete)
 		return bounds
@@ -231,21 +236,21 @@ class RT_ATRT():
 	def write_new_text_to_txt(self, result, vdo_time_sec):
 		conversion = datetime.timedelta(seconds=vdo_time_sec)
 		converted_time = str(conversion)
+		recognize = [item[5] for item in result]
+		if(-1 in recognize):
+			file = open("text.txt", "a", encoding="utf-8")
+			L = ["\nCurrent video time is ", converted_time, "\n"]
+			file.writelines(L)
+			for i in range(len(result)):
+				if(result[i][5] == -1):
+					L = [ result[i][6] + " {" + str(self.code_lang) + "} : " + result[i][7] + "\n"]
+					file.writelines(L)
+					print(result[i][6])
+				## BOBO dont forget implement this dunction after tesseract added
+				# file.writelines(str(L))
+				# print(result[i])
+			file.close()
 		
-		file = open("text.txt", "a", encoding="utf-8")
-		L = ["\nCurrent video time is ", converted_time, "\n"]
-		file.writelines(L)
-		for i in range(len(result)):
-			if(result[i][5] == -1):
-				L = [ result[i][6] + " {" + str(self.code_lang) + "} : " + result[i][7] + "\n"]
-				file.writelines(L)
-				print(result[i][6])
-			## BOBO dont forget implement this dunction after tesseract added
-			# file.writelines(str(L))
-			# print(result[i])
-		file.close()
-		
-	
 	def draw_result(self, frame, result):
 		output_frame = frame
 		for r in result:

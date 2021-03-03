@@ -1,8 +1,21 @@
 ## run command ##
 ## python file.py --video videofile.mp4 
 
-from import_python_library import *
-from def_frame_similarity import *
+from import_lib import *
+# from utils import *
+
+def normalize(arr):
+    rng = arr.max()-arr.min()
+    amin = arr.min()
+    return (arr-amin)*255/rng
+
+def compare_images(img1, img2):
+    img1 = normalize(current_frame_gray_edge)
+    img2 = normalize(prev_frame_gray_edge)
+    diff = img1 - img2  
+    m_norm = np.sum(abs(diff))  # Manhattan norm
+    # z_norm = norm(diff.ravel(), 0)  # Zero norm
+    return (m_norm)
 
 ##------INIT------##
 ap = argparse.ArgumentParser()
@@ -36,14 +49,14 @@ while(True):
     if ret == False:
         print('[STATUS] End Of Video...')
         break
-    if(i >= 108 ):       # for test
+    if(i >= 2 ):       # for test
         # print('[INFO] Current frame : ' + str(i))
         print('[INFO] Comparing frame : {} and {}'.format(i-1, i))
 
         current_frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         current_frame_gray_edge = cv2.Canny(current_frame_gray,100,200)
-        cv2.imwrite("./develop/compare3_edge//" + str(i) + '_frame.png' ,current_frame_gray_edge)
-        prev_frame_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)    
+        # cv2.imwrite("./develop/compare3_edge//" + str(i) + '_frame.png' ,current_frame_gray_edge)
+        prev_frame_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY) 
         prev_frame_gray_edge = cv2.Canny(prev_frame_gray,100,200)
         
         pixel = current_frame_gray_edge.size
@@ -60,9 +73,10 @@ while(True):
         # print('[INFO] Different : {}\n'.format(hash - otherhash))
 
         #third method
-        n_m, n_0 = compare_images(current_frame_gray_edge, prev_frame_gray_edge)
+        # n_m, n_0 = compare_images(current_frame_gray_edge, prev_frame_gray_edge)
+        n_m = compare_images(current_frame_gray_edge, prev_frame_gray_edge)
         print("Manhattan norm: " + str(n_m) + " / per pixel: " + str(n_m/pixel))
-        print("Zero norm: "+ str(n_0)+ " / per pixel: " + str(n_0*1.0/pixel))
+        # print("Zero norm: "+ str(n_0)+ " / per pixel: " + str(n_0*1.0/pixel))
         
         # cv2.imwrite("./develop/framepic2//" + str(i) + '_frame.png' ,frame)
         # cv2.imshow('frame', frame)
@@ -77,7 +91,7 @@ while(True):
         # if(q != 'y'):
         #     break
         # out.write(frame)
-    if (i == 113):  # for test
+    if (i == 100):  # for test
         break
 
     prev_frame = frame.copy()

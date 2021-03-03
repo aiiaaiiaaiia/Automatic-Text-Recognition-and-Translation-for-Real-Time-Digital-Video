@@ -27,3 +27,4 @@ from moviepy.editor import AudioFileClip
 
 from pafy import new
 
+import pytesseract

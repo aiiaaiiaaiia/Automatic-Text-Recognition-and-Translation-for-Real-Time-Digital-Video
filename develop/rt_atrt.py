@@ -24,8 +24,8 @@ class RT_ATRT():
 		############ Parameter #############
 		self.videopath = args["video"]
 		self.overlay = args["position"]      # above, below, text position
-		self.frame_similarity_threshold = 20
-		self.roi_similarity_threshold = 0.1
+		self.frame_similarity_threshold = 10
+		self.roi_similarity_threshold = 0.05
 		self.roi_distance_threshold = 6.0
 		self.multi_input_language = language
 		self.font = ImageFont.truetype('angsau_0.ttf', s)
@@ -70,7 +70,7 @@ class RT_ATRT():
 		prev_bounds = []
 		is_first_frame = True
 		prev_frame = 0
-		n_m = 20
+		n_m = 10
 		print_text = True
 		frame_idx = 1
 
@@ -80,9 +80,9 @@ class RT_ATRT():
 			if ret == False:
 				print('[INFO] End Of Video...')
 				break
-			## frame skip
+			# frame skip
 			if((frame_idx) % 5 != 0):
-				3 # go to overlays
+				# go to overlays
 				result = prev_bounds
 			else:
 				print(frame_idx)
@@ -98,7 +98,7 @@ class RT_ATRT():
 					if(self.is_frame_similar(prev_frame, frame)):
 						## Go for Overlay
 						# self.draw_result(frame, bounds)     # Just fixed
-						result = bounds
+						result = prev_bounds
 					else:
 						## Go for Detect text
 						bounds = self.text_detection(frame)
@@ -110,6 +110,7 @@ class RT_ATRT():
 							result = self.recognition(bounds, frame)
 							self.write_new_text_to_txt(result, frame_idx * (1.0 / self.fps))
 							
+			
 			output_frame = self.draw_result(frame, result)
 			self.output_vdo_writer.write(output_frame)
 

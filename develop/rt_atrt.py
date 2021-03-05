@@ -24,8 +24,8 @@ class RT_ATRT():
 		############ Parameter #############
 		self.videopath = args["video"]
 		self.overlay = args["position"]      # above, below, text position
-		self.frame_similarity_threshold = 10
-		self.roi_similarity_threshold = 0.05
+		self.frame_similarity_threshold = 0.05
+		self.roi_similarity_threshold = 0.0
 		self.roi_distance_threshold = 6.0
 		self.multi_input_language = language
 		self.font = ImageFont.truetype('angsau_0.ttf', s)
@@ -49,14 +49,12 @@ class RT_ATRT():
 	def extract_video_audio(self, path):
 		clip = VideoFileClip(path)
 		clip.audio.write_audiofile("audio.mp3")
-		return True
 
 	def add_video_audio(self, name):
 		newclip = VideoFileClip('new_' + name + '.mp4')
 		newaudio = AudioFileClip('audio.mp3')
 		final = newclip.set_audio(newaudio)
 		final.write_videofile('processed_' + name + '.mp4')
-		return True
 
 	def create_vdo_output_writer(self):
 		height = int(self.cap.get(4))
@@ -70,7 +68,7 @@ class RT_ATRT():
 		prev_bounds = []
 		is_first_frame = True
 		prev_frame = 0
-		n_m = 10
+		n_m = 1
 		print_text = True
 		frame_idx = 1
 
@@ -81,20 +79,25 @@ class RT_ATRT():
 				print('[INFO] End Of Video...')
 				break
 			# frame skip
-			if((frame_idx) % 5 != 0):
+			print(frame_idx)
+			if((frame_idx-1) % 6 != 0):
+				start_while = time.time()
+				print('skip')
 				# go to overlays
 				result = prev_bounds
 			else:
-				print(frame_idx)
+				start_while = time.time()
 				if is_first_frame:
 					bounds = self.text_detection(frame)
-					if bounds == []:
-						result = bounds
-					else:
+					# if bounds == []:
+					# 	result = bounds
+					# else:
+					if bounds != []:
 						result = self.recognition(bounds, frame)
 						self.write_new_text_to_txt(result, frame_idx * (1.0 / self.fps))
 					is_first_frame = False
 				else:
+					
 					if(self.is_frame_similar(prev_frame, frame)):
 						## Go for Overlay
 						# self.draw_result(frame, bounds)     # Just fixed
@@ -102,16 +105,20 @@ class RT_ATRT():
 					else:
 						## Go for Detect text
 						bounds = self.text_detection(frame)
-						if bounds == []:
-							result = bounds
-						else:
+						# if bounds == []:
+						# 	result = bounds
+						# else:
+						if bounds != []:
 							## Overlay_similarity_roi
-							bounds = self.overlay_similarity_roi(bounds, prev_bounds, frame, prev_frame)
+							if prev_bounds != []:
+								bounds = self.overlay_similarity_roi(bounds, prev_bounds, frame, prev_frame)
 							result = self.recognition(bounds, frame)
 							self.write_new_text_to_txt(result, frame_idx * (1.0 / self.fps))
-							
-			
-			output_frame = self.draw_result(frame, result)
+
+			if bounds == []:
+				output_frame = frame
+			else:
+				output_frame = self.draw_result(frame, result)
 			self.output_vdo_writer.write(output_frame)
 
 			### BOBO Sent progess to flask
@@ -119,6 +126,8 @@ class RT_ATRT():
 			prev_frame = frame
 			prev_bounds = result
 			frame_idx += 1
+			end_while = time.time()
+			print('time per frame ', end_while -start_while)
 		
 		self.output_vdo_writer.release()
 		# cap.release()
@@ -144,7 +153,7 @@ class RT_ATRT():
 		n_m = compare_images(frame, prev_frame)
 		print('compare_images ', n_m)
 		# print(n_m)
-		if n_m >= self.frame_similarity_threshold:
+		if n_m > self.frame_similarity_threshold:
 			return False
 		else:
 			return True
@@ -153,7 +162,7 @@ class RT_ATRT():
 	def is_roi_similar(self, roi, prev_roi):
 		#BOBO bobo
 		n_m = compare_images(roi, prev_roi)
-		if n_m >= self.roi_similarity_threshold:
+		if n_m > self.roi_similarity_threshold:
 			print("roi is umsimilar ", n_m)
 			return False
 		else:
@@ -189,7 +198,7 @@ class RT_ATRT():
 			for prev_bound_idx in range(len(prev_bounds)):
 				prev_bound = prev_bounds[prev_bound_idx]
 				dist = math.dist(bound[4], prev_bound[4])      # distance
-
+				# must use width and heigth for criteria as well
 				if dist <= self.roi_distance_threshold:                       # similar position by fine tune
 					roi = frame[ min(bound[2], prev_bound[2]):max(bound[3], prev_bound[3]), min(bound[0], prev_bound[0]):max(bound[1], prev_bound[1]) ]
 					prev_roi = prev_frame[ min(bound[2], prev_bound[2]):max(bound[3], prev_bound[3]), min(bound[0], prev_bound[0]):max(bound[1], prev_bound[1]) ]
@@ -215,7 +224,7 @@ class RT_ATRT():
 				c_roi_gray = cv2.cvtColor(c_roi, cv2.COLOR_BGR2GRAY)
 				c_rec = self.reader.recognize(c_roi_gray)
 				text = c_rec[0][1] 
-				if(text == ''):
+				if(text == '' or text.isnumeric()):
 					delete_index.append(c_b)
 					continue
 				text = text.lower()
@@ -259,6 +268,9 @@ class RT_ATRT():
 			#---- transparent
 			if self.overlay == 'above':
 				X=startX; Y = startY - 5; Xwidth = startX+text_width; Yheight = startY-text_height; a = 0.7
+				file = open("testtest.txt", "a", encoding="utf-8")
+				L = ["Xwidth ", str(Xwidth), " ", str(self.cap.get(4)), "\n"]
+				file.writelines(L)
 			elif self.overlay == 'under':
 				X = startX; Y = endY+text_height; Xwidth = X+text_width; Yheight = Y-text_height; a = 0.7
 			else:
@@ -285,7 +297,10 @@ class RT_ATRT():
 		return output_frame
 
 def main():
+	start = time.time()
 	rt_atrt = RT_ATRT()
+	end = time.time()
+	print('time process video ',end - start)
 
 if __name__ == "__main__":
     main()

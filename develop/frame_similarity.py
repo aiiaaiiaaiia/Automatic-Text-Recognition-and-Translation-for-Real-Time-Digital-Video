@@ -36,30 +36,30 @@ width = int(cap.get(3))
 print('[INFO] height : ' + str(height) + ' , width : '+str(width))
 
 name = videopath.split('.')[0]
-print('[INFO] VIDEO NAME : ' + name)
-print('[INFO] FPS : ' + str(fps))
+# print('[INFO] VIDEO NAME : ' + name)
+# print('[INFO] FPS : ' + str(fps))
 # out = cv2.VideoWriter('new_'+name+'.avi', cv2.VideoWriter_fourcc(*'MJPG'), fps, (width,height))
 
-print('[STATUS] READY')
+# print('[STATUS] READY')
 prev_frame = 0
 i = 1  # frame number 
 
 while(True):
     ret, frame = cap.read()     # current frame is frame
-    if ret == False:
-        print('[STATUS] End Of Video...')
-        break
-    if(i >= 2 ):       # for test
+    # if ret == False:
+        # print('[STATUS] End Of Video...')
+        # break
+    if(i >= 240 ):       # for test
         # print('[INFO] Current frame : ' + str(i))
-        print('[INFO] Comparing frame : {} and {}'.format(i-1, i))
+        # print('[INFO] Comparing frame : {} and {}'.format(i-1, i))
 
-        current_frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        current_frame_gray_edge = cv2.Canny(current_frame_gray,100,200)
-        # cv2.imwrite("./develop/compare3_edge//" + str(i) + '_frame.png' ,current_frame_gray_edge)
-        prev_frame_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY) 
-        prev_frame_gray_edge = cv2.Canny(prev_frame_gray,100,200)
+        # current_frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # current_frame_gray_edge = cv2.Canny(current_frame_gray,100,200)
+        # # cv2.imwrite("./develop/compare3_edge//" + str(i) + '_frame.png' ,current_frame_gray_edge)
+        # prev_frame_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY) 
+        # prev_frame_gray_edge = cv2.Canny(prev_frame_gray,100,200)
         
-        pixel = current_frame_gray_edge.size
+        # pixel = current_frame_gray_edge.size
         
         # first method
         # (score, diff) = structural_similarity(current_frame_gray, prev_frame_gray, full=True)
@@ -74,11 +74,11 @@ while(True):
 
         #third method
         # n_m, n_0 = compare_images(current_frame_gray_edge, prev_frame_gray_edge)
-        n_m = compare_images(current_frame_gray_edge, prev_frame_gray_edge)
-        print("Manhattan norm: " + str(n_m) + " / per pixel: " + str(n_m/pixel))
+        # n_m = compare_images(current_frame_gray_edge, prev_frame_gray_edge)
+        # print("Manhattan norm: " + str(n_m) + " / per pixel: " + str(n_m/pixel))
         # print("Zero norm: "+ str(n_0)+ " / per pixel: " + str(n_0*1.0/pixel))
         
-        # cv2.imwrite("./develop/framepic2//" + str(i) + '_frame.png' ,frame)
+        cv2.imwrite("./jpjp//" + str(i) + '_frame.png' ,frame)
         # cv2.imshow('frame', frame)
         # cv2.waitKey(0)
 
@@ -91,10 +91,10 @@ while(True):
         # if(q != 'y'):
         #     break
         # out.write(frame)
-    if (i == 100):  # for test
+    if (i == 300):  # for test
         break
 
-    prev_frame = frame.copy()
+    # prev_frame = frame.copy()
     i += 1
 
 # out.release()

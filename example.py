@@ -1,4 +1,4 @@
-from rt_atrt import RT_ATRT
+from rt_atrt_lib import RT_ATRT
 import time
 
 def main():
@@ -7,7 +7,8 @@ def main():
     position = "above"
     language = "chinese"
     translanguage = "thai"
-    rt_atrt = RT_ATRT(video, position, language, translanguage)
+    output_path = "output/"
+    rt_atrt = RT_ATRT(video, position, language, translanguage, output_path)
     end = time.time()
     print('time process video ',end - start)
 

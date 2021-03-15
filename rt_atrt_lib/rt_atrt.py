@@ -1,29 +1,33 @@
 # -*- coding: utf-8 -*-
-from import_lib import *
-from utils import *
-
+from .import_lib import *
+from .utils import *
 class RT_ATRT():
-	def __init__(self, video, position, language, translanguage):
+	def __init__(self, video, position, language, translanguage, output_path):
 		s = 20                          # default font size 
 		self.language = language     # video language
 		self.translanguage = translanguage
+		self.output_path = output_path
 
 		############ Parameter #############
 		self.videopath = video
 		self.overlay = position      # above, below, text position
 		self.frame_similarity_threshold = 0.05
-		self.roi_similarity_threshold = 0.0
+		self.roi_similarity_threshold = 0.98
 		self.roi_distance_threshold = 6.0
 		self.multi_input_language = self.language
 		self.font = ImageFont.truetype('angsau_0.ttf', s)
 		# para = False                  # default is False
-		self.code_lang, self.reader = lang(self.language)
+		if( (len(language) == 1 and 'auto detect' not in language) or ( len(language) == 2 and ('english' in language)) ):
+			self.code_lang, self.reader = lang(self.language)
+		else:  #multiple
+			self.config = tesseract_config(self.language)
+			self.reader = easyocr.Reader(['en']) 
 		self.code_translang = translang(self.translanguage)
 		self.code_color = (0,0,255)          # default color : red
 
 		self.cap = cv2.VideoCapture(self.videopath)
 		self.vdo_name = os.path.basename(self.videopath).split(".")[0]
-		self.out_text_file = open("output/" + str(self.vdo_name) + "_text.txt", "a", encoding="utf-8")
+		self.out_text_file = open(self.output_path + str(self.vdo_name) + "_text.txt", "a", encoding="utf-8")
 		# try:
 		self.extract_video_audio(self.videopath)
 		self.cap.isOpened()
@@ -36,18 +40,18 @@ class RT_ATRT():
 
 	def extract_video_audio(self, path):
 		clip = VideoFileClip(path)
-		clip.audio.write_audiofile("output/" + str(self.vdo_name) + "_audio.mp3")
+		clip.audio.write_audiofile(self.output_path + str(self.vdo_name) + "_audio.mp3")
 
 	def add_video_audio(self):
-		newclip = VideoFileClip("output/" + self.vdo_name + '.mp4')
-		newaudio = AudioFileClip("output/" + str(self.vdo_name) + "_audio.mp3")
+		newclip = VideoFileClip(self.output_path + self.vdo_name + '.mp4')
+		newaudio = AudioFileClip(self.output_path + str(self.vdo_name) + "_audio.mp3")
 		final = newclip.set_audio(newaudio)
-		final.write_videofile("output/" + 'processed_' + self.vdo_name + '.mp4')
+		final.write_videofile(self.output_path + 'processed_' + self.vdo_name + '.mp4')
 
 	def create_vdo_output_writer(self):
 		height = int(self.cap.get(4))
 		width = int(self.cap.get(3))
-		vdo_writer = cv2.VideoWriter("output/" +self.vdo_name+'.mp4', 0x7634706d, self.fps, (width,height))
+		vdo_writer = cv2.VideoWriter(self.output_path +self.vdo_name+'.mp4', 0x7634706d, self.fps, (width,height))
 		# cv2.VideoWriter_fourcc(*'MP4V')  mp4
 		# cv2.cv.CV_FOURCC(*'XVID')  avi
 		return vdo_writer
@@ -57,7 +61,6 @@ class RT_ATRT():
 		is_first_frame = True
 		prev_frame = 0
 		n_m = 1
-		print_text = True
 		frame_idx = 1
 
 		while(self.cap.isOpened()):
@@ -125,8 +128,7 @@ class RT_ATRT():
 	def recognition(self, bounds, frame):
 		if(self.is_multi_language()):
 			## Tesseract
-			## BOBO AIII
-			pass
+			result = self.tesseract_recognition(bounds, frame)
 		else:
 			## easy_ocr
 			result = self.easy_ocr_recognition(bounds, frame)
@@ -145,17 +147,16 @@ class RT_ATRT():
 			return False
 		else:
 			return True
-
 	
 	def is_roi_similar(self, roi, prev_roi):
-		#BOBO bobo
-		n_m = compare_images(roi, prev_roi)
-		if n_m > self.roi_similarity_threshold:
-			print("roi is umsimilar ", n_m)
-			return False
-		else:
-			print("roi is similar ", n_m)
-			return True
+		# Template matching 
+		g_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+		g_prev_roi = cv2.cvtColor(prev_roi, cv2.COLOR_BGR2GRAY)
+
+		res = cv2.matchTemplate(g_roi,g_prev_roi,cv2.TM_CCOEFF_NORMED)
+		loc = np.where( res >= self.roi_similarity_threshold)
+		l  = [pt for pt in zip(*loc[::-1])] 
+		return (len(l) == 1) 
 
 	def text_detection(self, frame):
 		bounds = []
@@ -206,30 +207,53 @@ class RT_ATRT():
 		for index in range(len(bounds)):
 			c_b = bounds[index]
 			if(c_b[5] == -1):   # similarity = -1, so need to recognize and translate
-				print_text = True
 				c_roi = frame[ c_b[2]:c_b[3], c_b[0]:c_b[1] ]
 				# print('{} {} {} {}'.format(c_b[2],c_b[3], c_b[0],c_b[1]))
-				c_roi_gray = cv2.cvtColor(c_roi, cv2.COLOR_BGR2GRAY)
-				c_rec = self.reader.recognize(c_roi_gray)
+				# c_roi_gray = cv2.cvtColor(c_roi, cv2.COLOR_BGR2GRAY)
+				c_rec = self.reader.recognize(c_roi)
 				text = c_rec[0][1] 
 				if(text == '' or text.isnumeric()):
 					delete_index.append(c_b)
 					continue
 				text = text.lower()
-				# detect_result = translator.detect(text)
-				# if detect_result[0] not in [self.code_lang]:
-				# 	detect_result = 'en'
+				detect_result = translator.detect(text)
+				if detect_result[0] not in [self.code_lang]:
+					detect_result = 'en'
 				trans = translator.translate(text, lang_src=self.code_lang, lang_tgt=self.code_translang)
 				text_width, text_height = self.font.getsize(trans)
 				bounds[index][6] = text
 				bounds[index][7] = trans
 				bounds[index][8] = text_width
 				bounds[index][9] = text_height
-				bounds[index][10] = self.code_lang
-				# bounds[index][10] = detect_result
+				bounds[index][10] = detect_result  #self.code_lang
 		for delete in delete_index:
 			bounds.remove(delete)
 		return bounds
+
+	def tesseract_recognition(self, bounds, frame):
+		delete_index = []
+		for index in range(len(bounds)):
+			c_b = bounds[index]
+			if(c_b[5] == -1):   # similarity = -1, so need to recognize and translate
+				c_roi = frame[ c_b[2]:c_b[3], c_b[0]:c_b[1] ]
+				c_roi_rgb = cv2.cvtColor(c_roi, cv2.COLOR_BGR2RGB)
+				text = pytesseract.image_to_string(c_roi_rgb, config = self.config)
+				if(text == '' or text.isnumeric()):
+					delete_index.append(c_b)
+					continue
+				text = text.lower()
+				detect_result = translator.detect(text)
+				trans = translator.translate(text, lang_src=self.code_lang, lang_tgt=self.code_translang)
+				text_width, text_height = self.font.getsize(trans)
+				bounds[index][6] = text
+				bounds[index][7] = trans
+				bounds[index][8] = text_width
+				bounds[index][9] = text_height
+				bounds[index][10] = detect_result
+		for delete in delete_index:
+			bounds.remove(delete)
+		return bounds
+
 
 	def write_new_text_to_txt(self, result, vdo_time_sec):
 		conversion = datetime.timedelta(seconds=vdo_time_sec)
@@ -237,16 +261,13 @@ class RT_ATRT():
 		recognize = [item[5] for item in result]
 		if(-1 in recognize):
 			L = ["\nCurrent video time is ", converted_time, "\n"]
-			self.out_text_file = open("output/" + str(self.vdo_name) + "_text.txt", "a", encoding="utf-8")
+			self.out_text_file = open(self.output_path + str(self.vdo_name) + "_text.txt", "a", encoding="utf-8")
 			self.out_text_file.writelines(L)
 			for i in range(len(result)):
 				if(result[i][5] == -1):
-					L = [ result[i][6] + " {" + str(self.code_lang) + "} : " + result[i][7] + "\n"]
+					L = [ result[i][6] + " {" + str(result[i][10]) + "} : " + result[i][7] + "\n"]
 					self.out_text_file.writelines(L)
-					print(result[i][6])
-				## BOBO dont forget implement this dunction after tesseract added
-				# self.out_text_file.writelines(str(L))
-				# print(result[i])
+					# print(result[i][6])
 			self.out_text_file.close()
 		
 	def draw_result(self, frame, result):
@@ -256,11 +277,12 @@ class RT_ATRT():
 			#---- transparent
 			if self.overlay == 'above':
 				X=startX; Y = startY - 5; Xwidth = startX+text_width; Yheight = startY-text_height; a = 0.7
-				file = open("testtest.txt", "a", encoding="utf-8")
-				L = ["Xwidth ", str(Xwidth), " ", str(self.cap.get(4)), "\n"]
-				file.writelines(L)
+				if(Yheight >= self.cap.get(4)):
+					X = startX ;Y = startY; Xwidth = endX; Yheight = endY; a = 1
 			elif self.overlay == 'under':
 				X = startX; Y = endY+text_height; Xwidth = X+text_width; Yheight = Y-text_height; a = 0.7
+				if(Y >= self.cap.get(4)):
+					X = startX ;Y = startY; Xwidth = endX; Yheight = endY; a = 1
 			else:
 				X = startX ;Y = startY; Xwidth = endX; Yheight = endY; a = 1
 		

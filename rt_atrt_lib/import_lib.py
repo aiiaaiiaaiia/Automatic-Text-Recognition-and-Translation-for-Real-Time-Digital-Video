@@ -20,6 +20,8 @@ import datetime
 from moviepy.editor import VideoFileClip
 from moviepy.editor import AudioFileClip
 
+from skimage.metrics import structural_similarity as ssim
+
 from pafy import new
 
 import pytesseract

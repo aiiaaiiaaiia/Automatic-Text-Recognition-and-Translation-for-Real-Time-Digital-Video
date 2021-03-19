@@ -33,6 +33,7 @@ def lang(language):
 
 def tesseract_config(language):
     config = '-l '
+    code_lang = []
     if 'auto' in language:
         config = ("-l eng+chi_sim+fra+tha+ita+jpn+kor+deu+spa --oem 3 --psm 6")
     else:
@@ -40,26 +41,35 @@ def tesseract_config(language):
             lang = language[i]
             if lang == 'english':
                 config += 'eng'
+                code_lang.append(lang)
             if lang == 'chinese':
                 config += 'chi_sim'
+                code_lang.append(lang)
             if lang == 'french':
                 config += 'fra'
+                code_lang.append(lang)
             if lang == 'thai':
                 config += 'tha'
+                code_lang.append(lang)
             if lang == 'italian':
                 config += 'ita'
+                code_lang.append(lang)
             if lang == 'japanese':
                 config += 'jpn'
+                code_lang.append(lang)
             if lang == 'korean':  
                 config += 'kor'
+                code_lang.append(lang)
             if lang == 'german':
                 config += 'deu'
+                code_lang.append(lang)
             if lang == 'spanish':
                 config += 'spa'
-            if i != len(language):
+                code_lang.append(lang)
+            if i != (len(language)-1):
                 config += '+'
         config += ' --oem 3 --psm 6'
-    return (config)
+    return (config, code_lang)
         
 def translang(translanguage):
   if translanguage == 'thai':
@@ -69,24 +79,14 @@ def translang(translanguage):
   return code_translang
 
 ##################### IMAGE ######################
-
-def normalize(arr):
-    rng = arr.max()-arr.min()
-    amin = arr.min()
-    return (arr-amin)*255/rng
-
 def compare_images(frame, prev_frame):
     current_frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     current_frame_gray_edge = cv2.Canny(current_frame_gray,100,200)
     prev_frame_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)    
     prev_frame_gray_edge = cv2.Canny(prev_frame_gray,100,200)
 
-    img1 = normalize(current_frame_gray_edge)
-    img2 = normalize(prev_frame_gray_edge)
-    diff = img1 - img2  
-    m_norm = np.sum(abs(diff))  # Manhattan norm
-    # z_norm = norm(diff.ravel(), 0)  # Zero norm
-    return (m_norm)
+    ssim_value = ssim(current_frame_gray_edge, prev_frame_gray_edge)    
+    return (ssim_value)
 
 ##################### LINK ######################
 def video_link_url(url):

@@ -37,6 +37,9 @@ class RT_ATRT():
 		self.process_vdo()
 		self.add_video_audio()
 		# except Exception as e: print(e)
+			
+	def output_from_process(self):
+		return self.output_path + 'processed_' + self.vdo_name + '.mp4'
 
 	def extract_video_audio(self, path):
 		clip = VideoFileClip(path)

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from .import_lib import *
 from .utils import *
+import math
 class RT_ATRT():
 	def __init__(self, video, position, language, translanguage, output_path):
 		s = 20                          # default font size 
@@ -48,7 +49,7 @@ class RT_ATRT():
 		clip.audio.write_audiofile(self.output_path + str(self.vdo_name) + "_audio.mp3")
 
 	def add_video_audio(self):
-		newclip = VideoFileClip(self.output_path + self.vdo_name + '.mp4')
+		newclip = VideoFileClip(self.output_path + 'processed_no_sound_' + self.vdo_name + '.mp4')
 		newaudio = AudioFileClip(self.output_path + str(self.vdo_name) + "_audio.mp3")
 		final = newclip.set_audio(newaudio)
 		final.write_videofile(self.output_path + 'processed_' + self.vdo_name + '.mp4')
@@ -56,7 +57,7 @@ class RT_ATRT():
 	def create_vdo_output_writer(self):
 		height = int(self.cap.get(4))
 		width = int(self.cap.get(3))
-		vdo_writer = cv2.VideoWriter( self.output_path + 'processed_' + self.vdo_name +'.mp4', 0x7634706d, self.fps, (width,height))
+		vdo_writer = cv2.VideoWriter( self.output_path + 'processed_no_sound_' + self.vdo_name +'.mp4', 0x7634706d, self.fps, (width,height))
 		# cv2.VideoWriter_fourcc(*'MP4V')  mp4
 		# cv2.cv.CV_FOURCC(*'XVID')  avi
 		return vdo_writer
@@ -124,7 +125,9 @@ class RT_ATRT():
 		print('[INFO] Thank you')
 
 	def write_process_log(self, frame_idx):
-		calculate_progress = int((frame_idx/self.total_frame) * 100)
+		calculate_progress = int(math.ceil(frame_idx/self.total_frame) * 100)
+		if frame_idx >= self.total_frame:
+			calculate_progress = 100
 		f = open(self.output_path + self.vdo_name + "_progress.txt", "w")
 		f.write(str(calculate_progress))
 		f.close()

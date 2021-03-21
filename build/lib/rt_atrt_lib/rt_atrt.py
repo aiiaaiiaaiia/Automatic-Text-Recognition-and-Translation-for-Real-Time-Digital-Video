@@ -11,16 +11,16 @@ class RT_ATRT():
 		############ Parameter #############
 		self.videopath = video
 		self.overlay = position      # above, below, text position
-		self.frame_similarity_threshold = 0.05
-		self.roi_similarity_threshold = 0.98
+		self.frame_similarity_threshold = 0.99
+		self.roi_similarity_threshold = 1
 		self.roi_distance_threshold = 6.0
 		self.multi_input_language = self.language
-		self.font = ImageFont.truetype('angsau_0.ttf', s)
-		# para = False                  # default is False
+		self.font = ImageFont.truetype('angsana.ttc', s)
+		# para = False                  s# default is False
 		if( (len(language) == 1 and 'auto detect' not in language) or ( len(language) == 2 and ('english' in language)) ):
 			self.code_lang, self.reader = lang(self.language)
 		else:  #multiple
-			self.config = tesseract_config(self.language)
+			self.config, self.code_lang = tesseract_config(self.language)
 			self.reader = easyocr.Reader(['en']) 
 		self.code_translang = translang(self.translanguage)
 		self.code_color = (0,0,255)          # default color : red
@@ -32,11 +32,16 @@ class RT_ATRT():
 		self.extract_video_audio(self.videopath)
 		self.cap.isOpened()
 		self.fps = self.cap.get(cv2.CAP_PROP_FPS)
+		self.total_frame = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
 		self.output_vdo_writer = self.create_vdo_output_writer()
 		
-		self.process_vdo()
-		self.add_video_audio(self.vdo_name)
+
 		# except Exception as e: print(e)
+			
+	def run_process(self):
+		self.process_vdo()
+		self.add_video_audio()
+		return self.output_path + 'processed_' + self.vdo_name + '.mp4'
 
 	def extract_video_audio(self, path):
 		clip = VideoFileClip(path)
@@ -51,7 +56,7 @@ class RT_ATRT():
 	def create_vdo_output_writer(self):
 		height = int(self.cap.get(4))
 		width = int(self.cap.get(3))
-		vdo_writer = cv2.VideoWriter(self.output_path +self.vdo_name+'.mp4', 0x7634706d, self.fps, (width,height))
+		vdo_writer = cv2.VideoWriter( self.output_path + 'processed_' + self.vdo_name +'.mp4', 0x7634706d, self.fps, (width,height))
 		# cv2.VideoWriter_fourcc(*'MP4V')  mp4
 		# cv2.cv.CV_FOURCC(*'XVID')  avi
 		return vdo_writer
@@ -71,24 +76,22 @@ class RT_ATRT():
 				break
 			# frame skip
 			print(frame_idx)
-			if((frame_idx-1) % 6 != 0):
-				start_while = time.time()
-				print('skip')
+			if((frame_idx-1) % 3 != 0):
+				# print('skip')
 				# go to overlays
 				result = prev_bounds
 			else:
-				start_while = time.time()
 				if is_first_frame:
 					bounds = self.text_detection(frame)
-					# if bounds == []:
-					# 	result = bounds
-					# else:
-					if bounds != []:
+					if bounds == []:
+						result = bounds
+					else:
+						# bounds != []
 						result = self.recognition(bounds, frame)
 						self.write_new_text_to_txt(result, frame_idx * (1.0 / self.fps))
 					is_first_frame = False
+
 				else:
-					
 					if(self.is_frame_similar(prev_frame, frame)):
 						## Go for Overlay
 						# self.draw_result(frame, bounds)     # Just fixed
@@ -96,34 +99,35 @@ class RT_ATRT():
 					else:
 						## Go for Detect text
 						bounds = self.text_detection(frame)
-						# if bounds == []:
-						# 	result = bounds
-						# else:
-						if bounds != []:
+						if bounds == []:
+							result = bounds
+						else:   #bounds != []:
 							## Overlay_similarity_roi
 							if prev_bounds != []:
 								bounds = self.overlay_similarity_roi(bounds, prev_bounds, frame, prev_frame)
 							result = self.recognition(bounds, frame)
 							self.write_new_text_to_txt(result, frame_idx * (1.0 / self.fps))
 
-			if bounds == []:
-				output_frame = frame
-			else:
-				output_frame = self.draw_result(frame, result)
+			output_frame = self.draw_result(frame, result)
 			self.output_vdo_writer.write(output_frame)
 
 			### BOBO Sent progess to flask
 				
 			prev_frame = frame
 			prev_bounds = result
+			self.write_process_log(frame_idx)
 			frame_idx += 1
-			end_while = time.time()
-			print('time per frame ', end_while -start_while)
 		
 		self.output_vdo_writer.release()
 		# cap.release()
 		cv2.destroyAllWindows()
 		print('[INFO] Thank you')
+
+	def write_process_log(self, frame_idx):
+		calculate_progress = int((frame_idx/self.total_frame) * 100)
+		f = open(self.output_path + self.vdo_name + "_progress.txt", "w")
+		f.write(str(calculate_progress))
+		f.close()
 	
 	def recognition(self, bounds, frame):
 		if(self.is_multi_language()):
@@ -138,12 +142,10 @@ class RT_ATRT():
 		return False
 
 	def is_frame_similar(self, prev_frame, frame):
-		# if Manhattan norm(n_m) < frame_similarity_threshold go to overlay process 
-		# if Manhattan norm(n_m) >= frame_similarity_threshold go to detect process 
 		n_m = compare_images(frame, prev_frame)
 		print('compare_images ', n_m)
 		# print(n_m)
-		if n_m > self.frame_similarity_threshold:
+		if n_m < self.frame_similarity_threshold:
 			return False
 		else:
 			return True
@@ -225,7 +227,7 @@ class RT_ATRT():
 				bounds[index][7] = trans
 				bounds[index][8] = text_width
 				bounds[index][9] = text_height
-				bounds[index][10] = detect_result  #self.code_lang
+				bounds[index][10] = detect_result[0]  #self.code_lang
 		for delete in delete_index:
 			bounds.remove(delete)
 		return bounds

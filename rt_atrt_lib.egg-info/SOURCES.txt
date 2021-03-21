@@ -1,6 +1,8 @@
+MANIFEST.in
 README.md
 setup.py
 rt_atrt_lib/__init__.py
+rt_atrt_lib/angsau.ttf
 rt_atrt_lib/import_lib.py
 rt_atrt_lib/rt_atrt.py
 rt_atrt_lib/utils.py

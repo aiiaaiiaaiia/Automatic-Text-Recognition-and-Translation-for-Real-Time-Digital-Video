@@ -32,13 +32,15 @@ class RT_ATRT():
 		self.extract_video_audio(self.videopath)
 		self.cap.isOpened()
 		self.fps = self.cap.get(cv2.CAP_PROP_FPS)
+		self.total_frame = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
 		self.output_vdo_writer = self.create_vdo_output_writer()
 		
-		self.process_vdo()
-		self.add_video_audio()
+
 		# except Exception as e: print(e)
 			
-	def output_from_process(self):
+	def run_process(self):
+		self.process_vdo()
+		self.add_video_audio()
 		return self.output_path + 'processed_' + self.vdo_name + '.mp4'
 
 	def extract_video_audio(self, path):
@@ -54,7 +56,7 @@ class RT_ATRT():
 	def create_vdo_output_writer(self):
 		height = int(self.cap.get(4))
 		width = int(self.cap.get(3))
-		vdo_writer = cv2.VideoWriter(self.output_path +self.vdo_name+'.mp4', 0x7634706d, self.fps, (width,height))
+		vdo_writer = cv2.VideoWriter( self.output_path + 'processed_' + self.vdo_name +'.mp4', 0x7634706d, self.fps, (width,height))
 		# cv2.VideoWriter_fourcc(*'MP4V')  mp4
 		# cv2.cv.CV_FOURCC(*'XVID')  avi
 		return vdo_writer
@@ -113,12 +115,19 @@ class RT_ATRT():
 				
 			prev_frame = frame
 			prev_bounds = result
+			self.write_process_log(frame_idx)
 			frame_idx += 1
 		
 		self.output_vdo_writer.release()
 		# cap.release()
 		cv2.destroyAllWindows()
 		print('[INFO] Thank you')
+
+	def write_process_log(self, frame_idx):
+		calculate_progress = int((frame_idx/self.total_frame) * 100)
+		f = open(self.output_path + self.vdo_name + "_progress.txt", "w")
+		f.write(str(calculate_progress))
+		f.close()
 	
 	def recognition(self, bounds, frame):
 		if(self.is_multi_language()):

@@ -3,7 +3,7 @@ from .import_lib import *
 from .utils import *
 import math
 class RT_ATRT():
-	def __init__(self, video, position, language, translanguage, output_path):
+	def __init__(self, video, position, language, translanguage, output_path, frame_similarity_threshold = 0.99, roi_similarity_threshold = 1, roi_distance_threshold = 6.0):
 		s = 20                          # default font size 
 		self.language = language     # video language
 		self.translanguage = translanguage
@@ -12,9 +12,9 @@ class RT_ATRT():
 		############ Parameter #############
 		self.videopath = video
 		self.overlay = position      # above, below, text position
-		self.frame_similarity_threshold = 0.99
-		self.roi_similarity_threshold = 1
-		self.roi_distance_threshold = 6.0
+		self.frame_similarity_threshold = frame_similarity_threshold
+		self.roi_similarity_threshold = roi_similarity_threshold
+		self.roi_distance_threshold = roi_distance_threshold
 		self.multi_input_language = self.language
 		self.font = ImageFont.truetype('angsana.ttc', s)
 		# para = False                  s# default is False
@@ -35,6 +35,9 @@ class RT_ATRT():
 		self.fps = self.cap.get(cv2.CAP_PROP_FPS)
 		self.total_frame = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
 		self.output_vdo_writer = self.create_vdo_output_writer()
+		f = open(self.output_path + self.vdo_name + "_progress.txt", "w")
+		f.write(str(0))
+		f.close()
 		
 
 		# except Exception as e: print(e)
@@ -53,6 +56,9 @@ class RT_ATRT():
 		newaudio = AudioFileClip(self.output_path + str(self.vdo_name) + "_audio.mp3")
 		final = newclip.set_audio(newaudio)
 		final.write_videofile(self.output_path + 'processed_' + self.vdo_name + '.mp4')
+		f = open(self.output_path + self.vdo_name + "_progress.txt", "w")
+		f.write(str(100))
+		f.close()
 
 	def create_vdo_output_writer(self):
 		height = int(self.cap.get(4))
@@ -77,7 +83,7 @@ class RT_ATRT():
 				break
 			# frame skip
 			print(frame_idx)
-			if((frame_idx-1) % 3 != 0):
+			if((frame_idx-1) % 4 != 0):
 				# print('skip')
 				# go to overlays
 				result = prev_bounds
@@ -125,9 +131,10 @@ class RT_ATRT():
 		print('[INFO] Thank you')
 
 	def write_process_log(self, frame_idx):
-		calculate_progress = int(math.ceil(frame_idx/self.total_frame) * 100)
-		if frame_idx >= self.total_frame:
-			calculate_progress = 100
+		print('frame_idx : ', frame_idx)
+		print('total_frame : ', self.total_frame - 1)
+		calculate_progress = int((frame_idx / (self.total_frame - 1)) * 99.0)
+		print('calculate_progress ', calculate_progress)
 		f = open(self.output_path + self.vdo_name + "_progress.txt", "w")
 		f.write(str(calculate_progress))
 		f.close()

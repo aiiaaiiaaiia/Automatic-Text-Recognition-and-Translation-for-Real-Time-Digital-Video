@@ -42,28 +42,28 @@ def tesseract_config(language):
             if lang == 'english':
                 config += 'eng'
                 code_lang.append(lang)
-            if lang == 'chinese':
+            elif lang == 'chinese':
                 config += 'chi_sim'
                 code_lang.append(lang)
-            if lang == 'french':
+            elif lang == 'french':
                 config += 'fra'
                 code_lang.append(lang)
-            if lang == 'thai':
+            elif lang == 'thai':
                 config += 'tha'
                 code_lang.append(lang)
-            if lang == 'italian':
+            elif lang == 'italian':
                 config += 'ita'
                 code_lang.append(lang)
-            if lang == 'japanese':
+            elif lang == 'japanese':
                 config += 'jpn'
                 code_lang.append(lang)
-            if lang == 'korean':  
+            elif lang == 'korean':  
                 config += 'kor'
                 code_lang.append(lang)
-            if lang == 'german':
+            elif lang == 'german':
                 config += 'deu'
                 code_lang.append(lang)
-            if lang == 'spanish':
+            elif lang == 'spanish':
                 config += 'spa'
                 code_lang.append(lang)
             if i != (len(language)-1):

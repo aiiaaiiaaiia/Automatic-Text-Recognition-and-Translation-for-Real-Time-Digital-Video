@@ -38,7 +38,6 @@ class RT_ATRT():
 		f = open(self.output_path + self.vdo_name + "_progress.txt", "w")
 		f.write(str(0))
 		f.close()
-		
 
 		# except Exception as e: print(e)
 			
@@ -231,13 +230,15 @@ class RT_ATRT():
 				detect_result = translator.detect(text)
 				if detect_result[0] not in [self.code_lang]:
 					detect_result = 'en'
+				else:
+					detect_result = detect_result[0]
 				trans = translator.translate(text, lang_src=self.code_lang, lang_tgt=self.code_translang)
 				text_width, text_height = self.font.getsize(trans)
 				bounds[index][6] = text
 				bounds[index][7] = trans
 				bounds[index][8] = text_width
 				bounds[index][9] = text_height
-				bounds[index][10] = detect_result[0]  #self.code_lang
+				bounds[index][10] = detect_result  #self.code_lang
 		for delete in delete_index:
 			bounds.remove(delete)
 		return bounds
